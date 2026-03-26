@@ -13,8 +13,9 @@ Here is a step by step guide on how to do this:
 - make
 - dkms
 - dwarves
-- kernel-headers
+- kernel-headers / kernel-devel
 - lm_sensors
+- git
 
 ## System requirements to set up fan control
 
@@ -23,65 +24,138 @@ Here is a step by step guide on how to do this:
 
 ## Install Guide
 
+### Automated Installation (Recommended)
+
+The install script handles DKMS registration, module auto-loading at boot,
+and `fancontrol` service ordering so that fan control survives reboots.
+
 1) SSH into your UGREEN NAS
 
-2) Install the packages mentioned above like
+2) Install the required packages
 
 ```bash
-sudo dnf install gcc make dkms dwarves kernel-headers sensors
+# Fedora
+sudo dnf install gcc make dkms dwarves kernel-headers kernel-devel lm_sensors git
+
+# Debian / Ubuntu
+sudo apt install gcc make dkms dwarves linux-headers-$(uname -r) lm-sensors git
 ```
 
-3) Building the dkms module and installing it
+3) Clone and run the installer
 
 ```bash
-cd /it87
-make -j4
-sudo make install
+git clone --recurse-submodules https://github.com/0n1cOn3/UGREEN-Fan-Control.git
+cd UGREEN-Fan-Control
+sudo ./install.sh
+```
+
+4) Configure lm_sensors and fan channels
+
+```bash
+sudo sensors-detect   # answer Y to all questions
+sudo pwmconfig        # creates /etc/fancontrol
+```
+
+5) Enable the fancontrol service at boot
+
+```bash
+systemctl enable --now fancontrol
 ```
 
 > [!NOTE]
-> If you see this:
-> __Skipping BTF generation [module name] due to unavailabilty of vmlinux.__
->
-> You can simply run:
->
-> ```bash
-> cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
-> ```
->
-> And clean up the previous, interrupted build and do a clean build from scratch
->
-> ```bash
-> make clean && make -j4 && sudo make install
-> ```
+> The install script already configures the it87 module to load at every boot
+> (`/etc/modules-load.d/it87.conf`) and adds a systemd drop-in so that
+> `fancontrol.service` waits for the module to be loaded before starting.
+> This prevents the race condition that previously caused the service to fail
+> after a reboot.
 
-1) Testing and configure the fans by configure lm_sensors
+### Manual Installation
+
+If you prefer to install manually, follow the steps below.
+
+1) SSH into your UGREEN NAS
+
+2) Install the required packages (see list above)
+
+3) Clone the repository and initialise the submodule
 
 ```bash
-sudo sensors-detect
+git clone --recurse-submodules https://github.com/0n1cOn3/UGREEN-Fan-Control.git
+cd UGREEN-Fan-Control
 ```
 
-You can answer all questions with Y.
+4) Build and install the it87 module **via DKMS**
+
+```bash
+cd it87
+sudo make dkms
+```
+
+> [!IMPORTANT]
+> Use `make dkms` instead of `make && make install`. The DKMS target
+> properly registers the module so it is rebuilt automatically after kernel
+> updates and persists across reboots.
 
 > [!NOTE]
-> If you have previously executed lm_sensor in and the dkms module has not yet been installed, you may see the following message:
+> If you see:
+> __Skipping BTF generation [module name] due to unavailability of vmlinux.__
+>
+> Run:
+>
+> ```bash
+> sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/$(uname -r)/build/
+> ```
+>
+> Then retry:
+>
+> ```bash
+> make clean
+> sudo make dkms
+> ```
+
+5) Configure the module to load at boot
+
+```bash
+echo "it87" | sudo tee /etc/modules-load.d/it87.conf
+```
+
+6) Create a systemd drop-in for fancontrol to wait for hardware
+
+```bash
+sudo mkdir -p /etc/systemd/system/fancontrol.service.d
+sudo tee /etc/systemd/system/fancontrol.service.d/10-wait-for-hwmon.conf <<'EOF'
+[Unit]
+After=systemd-modules-load.service
+Wants=systemd-modules-load.service
+
+[Service]
+ExecStartPre=/bin/sleep 3
+Restart=on-failure
+RestartSec=5
+EOF
+sudo systemctl daemon-reload
+```
+
+7) Configure lm_sensors and fan channels
+
+```bash
+sudo sensors-detect   # answer Y to all questions
+sudo pwmconfig        # creates /etc/fancontrol
+```
+
+> [!NOTE]
+> If you have previously run sensors-detect before the module was installed,
+> you may see:
 >
 > ```txt
 > Found `ITE IT8613E Super IO Sensors'                        Success!
 > (address 0xa30, driver `to-be-written')
 > ```
 >
-> Thats normal behavior and still will appear, even when the driver has been installed. But the interface to the ventilation is now available
+> This is normal. The interface to the fan controller is now available once
+> the it87 module is loaded.
 
-Do determine now which fan uses which channel, we can run pwmconfig which makes it easy for us, to detect:
-
-```bash
-sudo pwmconfig
-```
-
-This small application will take over for creating the fancontrol config file in /etc
-
-Finally, to be on the safe side, we can activate the fancontrol service at boot time
+8) Enable the fancontrol service at boot
 
 ```bash
 systemctl enable --now fancontrol
@@ -161,6 +235,36 @@ Core 1:        +49.0°C  (high = +105.0°C, crit = +105.0°C)
 Core 2:        +49.0°C  (high = +105.0°C, crit = +105.0°C)
 Core 3:        +49.0°C  (high = +105.0°C, crit = +105.0°C)
 ```
+
+## Troubleshooting
+
+### fancontrol.service fails after reboot
+
+This is typically caused by one of the following:
+
+1. **it87 module not loaded at boot** – Verify it is configured:
+   ```bash
+   cat /etc/modules-load.d/it87.conf   # should contain "it87"
+   lsmod | grep it87                    # should show the module
+   ```
+
+2. **fancontrol starts before hwmon devices are ready** – Ensure the
+   systemd drop-in is in place:
+   ```bash
+   cat /etc/systemd/system/fancontrol.service.d/10-wait-for-hwmon.conf
+   ```
+
+3. **Module was not installed via DKMS** – Check DKMS status:
+   ```bash
+   dkms status | grep it87
+   ```
+   If it87 is not listed, re-run `sudo make dkms` from the `it87/` directory
+   (or re-run `sudo ./install.sh`).
+
+### hwmon numbering changed after reboot
+
+If your `/etc/fancontrol` references `hwmon2` but after reboot the device
+appears as `hwmon3`, run `sudo pwmconfig` again to regenerate the config.
 
 # Bugs
 
