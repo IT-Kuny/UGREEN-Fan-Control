@@ -129,7 +129,7 @@ After=systemd-modules-load.service
 Wants=systemd-modules-load.service
 
 [Service]
-ExecStartPre=/bin/sleep 3
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do if ls /sys/class/hwmon/hwmon*/name 1>/dev/null 2>&1; then exit 0; fi; sleep 1; done; echo "Timed out waiting for hwmon devices"; exit 1'
 Restart=on-failure
 RestartSec=5
 EOF

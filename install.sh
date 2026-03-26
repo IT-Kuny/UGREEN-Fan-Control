@@ -108,14 +108,14 @@ fi
 #
 # Solution: Add a drop-in that:
 #   - Waits for systemd-modules-load.service (loads /etc/modules-load.d/*)
-#   - Adds a small startup delay to allow hwmon device enumeration
+#   - Polls for hwmon devices to appear (up to 30 s) before starting
 #   - Automatically restarts the service on failure
 DROPIN_DIR="/etc/systemd/system/fancontrol.service.d"
 DROPIN_CONF="${DROPIN_DIR}/10-wait-for-hwmon.conf"
 
 info "Creating systemd drop-in for fancontrol ..."
 mkdir -p "$DROPIN_DIR"
-cat > "$DROPIN_CONF" <<'EOF'
+cat > "$DROPIN_CONF" <<'DROPINEOF'
 # Drop-in for fancontrol.service
 # Ensures the it87 kernel module is loaded and hwmon devices are available
 # before fancontrol starts.  Also adds restart-on-failure so transient
@@ -125,11 +125,13 @@ After=systemd-modules-load.service
 Wants=systemd-modules-load.service
 
 [Service]
-# Give hwmon devices time to enumerate after module load
-ExecStartPre=/bin/sleep 3
+# Poll for hwmon devices to appear (up to 30 seconds) before starting.
+# This is more robust than a fixed sleep because it adapts to both fast
+# and slow hardware enumeration.
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do if ls /sys/class/hwmon/hwmon*/name 1>/dev/null 2>&1; then exit 0; fi; sleep 1; done; echo "Timed out waiting for hwmon devices"; exit 1'
 Restart=on-failure
 RestartSec=5
-EOF
+DROPINEOF
 
 systemctl daemon-reload
 info "Systemd drop-in created at ${DROPIN_CONF}"
