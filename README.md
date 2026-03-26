@@ -111,7 +111,7 @@ sudo make install
 
 > [!NOTE]
 > If you see this:
-> __Skipping BTF generation [module name] due to unavailabilty of vmlinux.__
+> __Skipping BTF generation [module name] due to unavailability of vmlinux.__
 >
 > You can simply run:
 >
