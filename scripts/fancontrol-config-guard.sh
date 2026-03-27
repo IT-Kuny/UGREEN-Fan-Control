@@ -134,7 +134,7 @@ update_device_paths() {
         # Search for the device by name in current hwmon devices.
         # DEVNAME from pwmconfig includes the bus/address suffix (e.g.
         # "it8613-isa-0a30"), while the hwmon name file often contains
-        # only the driver name (e.g. "it8613").  We normalise both sides
+        # only the driver name (e.g. "it8613").  We normalize both sides
         # by stripping everything from the first '-' onward so that a
         # prefix match succeeds even when the suffixes differ.
         local found_path=""
