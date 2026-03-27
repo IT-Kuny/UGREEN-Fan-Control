@@ -171,6 +171,18 @@ update_device_paths() {
         # Update DEVPATH in a temp file and then atomically replace
         local tmpfile
         tmpfile=$(mktemp "${CONFIG_FILE}.XXXXXX")
+        # Ensure the temporary file inherits permissions, ownership, and
+        # (where supported) SELinux context from the original config before
+        # it is moved into place. This avoids changing attributes that
+        # services or security policies may rely on.
+        if [ -e "$CONFIG_FILE" ]; then
+            # Best-effort: ignore failures on systems lacking these utilities/options.
+            chown --reference="$CONFIG_FILE" "$tmpfile" 2>/dev/null || true
+            chmod --reference="$CONFIG_FILE" "$tmpfile" 2>/dev/null || true
+            if command -v chcon >/dev/null 2>&1; then
+                chcon --reference="$CONFIG_FILE" "$tmpfile" 2>/dev/null || true
+            fi
+        fi
         sed "s|^DEVPATH=.*|${new_devpath}|" "$CONFIG_FILE" > "$tmpfile"
         mv "$tmpfile" "$CONFIG_FILE"
         log "Device paths updated successfully"
