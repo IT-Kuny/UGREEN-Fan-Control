@@ -54,9 +54,15 @@ if [ ${#MISSING_DEPS[@]} -ne 0 ]; then
 fi
 
 # -- Initialise / update the it87 submodule --------------------------------
+# Run git operations as the invoking user (not root) to avoid leaving
+# the working tree and .git/modules owned by root.
 info "Initialising it87 submodule ..."
 cd "$SCRIPT_DIR"
-git submodule update --init --recursive
+if [ -n "${SUDO_USER:-}" ]; then
+    sudo -u "$SUDO_USER" git submodule update --init --recursive
+else
+    git submodule update --init --recursive
+fi
 
 if [ ! -f "${IT87_DIR}/Makefile" ]; then
     error "it87 submodule is empty. Please check your network and retry."
@@ -96,9 +102,12 @@ if [ ! -d "$MODULES_LOAD_DIR" ]; then
     mkdir -p "$MODULES_LOAD_DIR"
 fi
 
-if [ ! -f "$MODULES_LOAD_CONF" ] || ! grep -q '^it87$' "$MODULES_LOAD_CONF" 2>/dev/null; then
+if [ ! -f "$MODULES_LOAD_CONF" ]; then
     info "Configuring it87 module to load at boot ..."
     echo "it87" > "$MODULES_LOAD_CONF"
+elif ! grep -Eq '^[[:space:]]*it87([[:space:]]|$)' "$MODULES_LOAD_CONF" 2>/dev/null; then
+    info "Configuring it87 module to load at boot ..."
+    echo "it87" >> "$MODULES_LOAD_CONF"
 fi
 
 # -- Add systemd drop-in for fancontrol ordering ---------------------------
@@ -108,7 +117,7 @@ fi
 #
 # Solution: Add a drop-in that:
 #   - Waits for systemd-modules-load.service (loads /etc/modules-load.d/*)
-#   - Polls for hwmon devices to appear (up to 30 s) before starting
+#   - Polls for the it87 hwmon device to appear (up to 30 s) before starting
 #   - Automatically restarts the service on failure
 DROPIN_DIR="/etc/systemd/system/fancontrol.service.d"
 DROPIN_CONF="${DROPIN_DIR}/10-wait-for-hwmon.conf"
@@ -125,10 +134,11 @@ After=systemd-modules-load.service
 Wants=systemd-modules-load.service
 
 [Service]
-# Poll for hwmon devices to appear (up to 30 seconds) before starting.
-# This is more robust than a fixed sleep because it adapts to both fast
-# and slow hardware enumeration.
-ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do if ls /sys/class/hwmon/hwmon*/name 1>/dev/null 2>&1; then exit 0; fi; sleep 1; done; echo "Timed out waiting for hwmon devices"; exit 1'
+# Poll for the it87 hwmon device to appear (up to 30 seconds) before starting.
+# Checks specifically for the it87 sensor rather than any hwmon device, so
+# that systems with other hwmon devices (e.g. CPU sensors) don't start
+# fancontrol before the fan controller hardware is ready.
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do for n in /sys/class/hwmon/hwmon*/name; do if [ -f "$n" ] && [ "$(cat "$n")" = "it87" ]; then exit 0; fi; done; sleep 1; done; echo "Timed out waiting for it87 hwmon device"; exit 1'
 Restart=on-failure
 RestartSec=5
 DROPINEOF
