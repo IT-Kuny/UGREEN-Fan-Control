@@ -124,7 +124,7 @@ else
 fi
 
 # Simulate corruption (empty the config)
-true > "$CONFIG_FILE"
+: > "$CONFIG_FILE"
 
 # Restore using the real function
 restore_config
