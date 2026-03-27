@@ -63,10 +63,17 @@ Please install them:
 
 check_submodule() {
     if [ ! -f "$IT87_DIR/it87.c" ]; then
+        # Run git operations as the invoking user (not root) to avoid leaving
+        # the working tree and .git/modules owned by root.
         log "Initializing it87 submodule..."
         cd "$REPO_DIR"
-        git submodule init
-        git submodule update
+        if [ -n "${SUDO_USER:-}" ]; then
+            sudo -u "$SUDO_USER" git submodule init
+            sudo -u "$SUDO_USER" git submodule update
+        else
+            git submodule init
+            git submodule update
+        fi
     fi
 
     if [ ! -f "$IT87_DIR/it87.c" ]; then
