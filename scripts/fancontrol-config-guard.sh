@@ -191,33 +191,36 @@ update_device_paths() {
     fi
 }
 
-case "${1:-guard}" in
-    backup)
-        backup_config
-        ;;
-    restore)
-        restore_config
-        ;;
-    update-paths)
-        update_device_paths
-        ;;
-    guard)
-        # Default action: restore if needed, update paths, then backup
-        restore_config
-        update_device_paths
-        backup_config
-        ;;
-    validate)
-        if validate_config "$CONFIG_FILE"; then
-            log "Configuration is valid"
-            exit 0
-        else
-            log "Configuration is INVALID"
+# Only run main logic when executed directly, not when sourced for testing
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    case "${1:-guard}" in
+        backup)
+            backup_config
+            ;;
+        restore)
+            restore_config
+            ;;
+        update-paths)
+            update_device_paths
+            ;;
+        guard)
+            # Default action: restore if needed, update paths, then backup
+            restore_config
+            update_device_paths
+            backup_config
+            ;;
+        validate)
+            if validate_config "$CONFIG_FILE"; then
+                log "Configuration is valid"
+                exit 0
+            else
+                log "Configuration is INVALID"
+                exit 1
+            fi
+            ;;
+        *)
+            echo "Usage: $0 {backup|restore|update-paths|guard|validate}"
             exit 1
-        fi
-        ;;
-    *)
-        echo "Usage: $0 {backup|restore|update-paths|guard|validate}"
-        exit 1
-        ;;
-esac
+            ;;
+    esac
+fi

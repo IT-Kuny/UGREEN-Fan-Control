@@ -63,6 +63,12 @@ EOF
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=/dev/null
 . "$SCRIPT_DIR/scripts/fancontrol-config-guard.sh"
+
+# Override config paths to use test directory
+CONFIG_FILE="$TEST_DIR/fancontrol"
+BACKUP_DIR="$TEST_DIR/fancontrol.d"
+BACKUP_FILE="${BACKUP_DIR}/fancontrol.bak"
+
 # ---- Test: validate_config with valid config ----
 log_test "validate_config with valid config"
 config_file="$TEST_DIR/fancontrol"
@@ -104,32 +110,34 @@ fi
 
 # ---- Test: backup and restore logic ----
 log_test "backup and restore"
-config_file="$TEST_DIR/fancontrol_br"
-backup_file="$TEST_DIR/fancontrol_br.bak"
+CONFIG_FILE="$TEST_DIR/fancontrol_br"
+BACKUP_DIR="$TEST_DIR/fancontrol_br.d"
+BACKUP_FILE="${BACKUP_DIR}/fancontrol.bak"
 
-create_valid_config "$config_file"
-cp -p "$config_file" "$backup_file"
+create_valid_config "$CONFIG_FILE"
+backup_config
 
-if [ -f "$backup_file" ] && diff -q "$config_file" "$backup_file" > /dev/null; then
+if [ -f "$BACKUP_FILE" ] && diff -q "$CONFIG_FILE" "$BACKUP_FILE" > /dev/null; then
     pass "Backup created successfully"
 else
     fail "Backup creation failed"
 fi
 
 # Simulate corruption (empty the config)
-> "$config_file"
+true > "$CONFIG_FILE"
 
-# Simulate restore
-if [ ! -s "$config_file" ] && [ -f "$backup_file" ] && [ -s "$backup_file" ]; then
-    cp -p "$backup_file" "$config_file"
-    if [ -s "$config_file" ] && validate_config "$config_file"; then
-        pass "Config restored from backup successfully"
-    else
-        fail "Config restore failed"
-    fi
+# Restore using the real function
+restore_config
+if [ -s "$CONFIG_FILE" ] && validate_config "$CONFIG_FILE"; then
+    pass "Config restored from backup successfully"
 else
-    fail "Restore conditions not met"
+    fail "Config restore failed"
 fi
+
+# Reset config paths for remaining tests
+CONFIG_FILE="$TEST_DIR/fancontrol"
+BACKUP_DIR="$TEST_DIR/fancontrol.d"
+BACKUP_FILE="${BACKUP_DIR}/fancontrol.bak"
 
 # ---- Test: atomic file update (simulating device path update) ----
 log_test "atomic file update simulation"
@@ -163,13 +171,13 @@ create_valid_config "$config_file"
 
 # Simulate reading config while backup occurs
 (
-    for i in $(seq 1 10); do
+    for _ in $(seq 1 10); do
         cat "$config_file" > /dev/null 2>&1 || true
     done
 ) &
 reader_pid=$!
 
-for i in $(seq 1 10); do
+for _ in $(seq 1 10); do
     cp -p "$config_file" "$backup_file" 2>/dev/null || true
 done
 

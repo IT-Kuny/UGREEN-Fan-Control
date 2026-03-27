@@ -31,7 +31,7 @@ check_dependencies() {
     log "Checking dependencies..."
     local missing=()
 
-    for cmd in make gcc dkms depmod modprobe; do
+    for cmd in make gcc dkms depmod modprobe git; do
         if ! command -v "$cmd" &>/dev/null; then
             missing+=("$cmd")
         fi
@@ -40,9 +40,9 @@ check_dependencies() {
     if [ ${#missing[@]} -gt 0 ]; then
         error "Missing required commands: ${missing[*]}
 Please install the required packages:
-  Fedora/RHEL: sudo dnf install gcc make dkms dwarves kernel-headers lm_sensors
-  Debian/Ubuntu: sudo apt install gcc make dkms dwarves linux-headers-\$(uname -r) lm-sensors
-  Arch: sudo pacman -S gcc make dkms linux-headers lm_sensors"
+  Fedora/RHEL: sudo dnf install gcc make dkms dwarves kernel-headers lm_sensors git
+  Debian/Ubuntu: sudo apt install gcc make dkms dwarves linux-headers-\$(uname -r) lm-sensors git
+  Arch: sudo pacman -S gcc make dkms linux-headers lm_sensors git"
     fi
 
     # Check for kernel headers
