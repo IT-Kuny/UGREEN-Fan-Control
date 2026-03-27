@@ -131,9 +131,10 @@ install_services() {
     cp "$REPO_DIR/config/it87-driver.service" /etc/systemd/system/
     cp "$REPO_DIR/config/fancontrol-config-guard.service" /etc/systemd/system/
 
-    # Create fancontrol override to ensure proper service ordering
+    # Create fancontrol drop-in to ensure proper service ordering.
+    # Uses a uniquely named file to avoid overwriting admin drop-ins.
     mkdir -p /etc/systemd/system/fancontrol.service.d
-    cat > /etc/systemd/system/fancontrol.service.d/override.conf << 'EOF'
+    cat > /etc/systemd/system/fancontrol.service.d/ugreen-ordering.conf << 'EOF'
 [Unit]
 After=it87-driver.service fancontrol-config-guard.service
 Requires=it87-driver.service

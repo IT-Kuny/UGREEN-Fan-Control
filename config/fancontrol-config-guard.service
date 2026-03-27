@@ -1,6 +1,5 @@
 [Unit]
 Description=Fancontrol configuration guard
-DefaultDependencies=no
 Before=fancontrol.service
 After=it87-driver.service local-fs.target
 Requires=it87-driver.service

@@ -131,13 +131,20 @@ update_device_paths() {
             continue
         fi
 
-        # Search for the device by name in current hwmon devices
+        # Search for the device by name in current hwmon devices.
+        # DEVNAME from pwmconfig includes the bus/address suffix (e.g.
+        # "it8613-isa-0a30"), while the hwmon name file often contains
+        # only the driver name (e.g. "it8613").  We normalise both sides
+        # by stripping everything from the first '-' onward so that a
+        # prefix match succeeds even when the suffixes differ.
         local found_path=""
+        local dev_name_prefix="${dev_name%%-*}"
         for hwmon_dir in /sys/class/hwmon/hwmon*; do
             if [ -f "$hwmon_dir/name" ]; then
                 local current_name
                 current_name=$(cat "$hwmon_dir/name" 2>/dev/null || true)
-                if [ "$current_name" = "$dev_name" ]; then
+                local current_prefix="${current_name%%-*}"
+                if [ "$current_prefix" = "$dev_name_prefix" ]; then
                     local current_path
                     current_path=$(basename "$hwmon_dir")
                     found_path="$current_path"
@@ -150,7 +157,7 @@ update_device_paths() {
             log "Device path changed for $hwmon_name: $old_path -> $found_path"
             needs_update=1
 
-            # Update all references to this hwmon in the config
+            # Update the DEVPATH entry for this hwmon device
             if [ "$first" -eq 0 ]; then
                 new_devpath="$new_devpath "
             fi

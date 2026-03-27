@@ -37,6 +37,8 @@ systemctl disable it87-driver.service 2>/dev/null || true
 log "Removing systemd files..."
 rm -f /etc/systemd/system/it87-driver.service
 rm -f /etc/systemd/system/fancontrol-config-guard.service
+rm -f /etc/systemd/system/fancontrol.service.d/ugreen-ordering.conf
+# Also clean up the old override.conf name from earlier installations
 rm -f /etc/systemd/system/fancontrol.service.d/override.conf
 if [ -d /etc/systemd/system/fancontrol.service.d ] && [ -z "$(ls -A /etc/systemd/system/fancontrol.service.d)" ]; then
     rmdir /etc/systemd/system/fancontrol.service.d
