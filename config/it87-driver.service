@@ -1,0 +1,15 @@
+[Unit]
+Description=Load IT87 hardware monitoring driver
+DefaultDependencies=no
+Before=fancontrol.service lm-sensors.service
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/sbin/depmod -a
+ExecStart=/sbin/modprobe it87 ignore_resource_conflict=1
+ExecStop=-/sbin/modprobe -r it87
+
+[Install]
+WantedBy=multi-user.target

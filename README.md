@@ -15,33 +15,103 @@ Here is a step by step guide on how to do this:
 - dwarves
 - kernel-headers
 - lm_sensors
+- git
 
 ## System requirements to set up fan control
 
 - SSH Client
 - Basic knowledge with Linux and terminal commands
 
-## Install Guide
+## Install Guide (Automated)
+
+The automated installer handles driver building via DKMS, systemd service setup,
+and configuration protection. It ensures the driver loads reliably after reboots
+and kernel updates, and guards against fancontrol configuration loss.
+
+1) SSH into your UGREEN NAS
+
+2) Install the required packages
+
+```bash
+# Fedora/RHEL
+sudo dnf install gcc make dkms dwarves kernel-headers lm_sensors git
+
+# Debian/Ubuntu
+sudo apt install gcc make dkms dwarves linux-headers-$(uname -r) lm-sensors git
+
+# Arch
+sudo pacman -S gcc make dkms linux-headers lm_sensors git
+```
+
+3) Clone the repository and run the installer
+
+```bash
+git clone --recurse-submodules https://github.com/0n1cOn3/UGREEN-Fan-Control.git
+cd UGREEN-Fan-Control
+sudo ./scripts/install.sh
+```
+
+4) Detect sensors and configure fan control
+
+```bash
+sudo sensors-detect
+```
+
+You can answer all questions with Y.
+
+> [!NOTE]
+> If you have previously executed lm_sensors and the dkms module has not yet been installed, you may see the following message:
+>
+> ```txt
+> Found `ITE IT8613E Super IO Sensors'                        Success!
+> (address 0xa30, driver `to-be-written')
+> ```
+>
+> That's normal behavior and will still appear even when the driver has been installed. The interface to the ventilation is now available.
+
+5) Configure which fan uses which channel
+
+```bash
+sudo pwmconfig
+```
+
+This utility will create the fancontrol config file in `/etc/fancontrol`.
+
+6) Enable and start the fancontrol service
+
+```bash
+sudo systemctl enable --now fancontrol
+```
+
+The installer automatically sets up systemd services that ensure:
+- The it87 driver is loaded **before** fancontrol starts (prevents race conditions)
+- The fancontrol configuration is backed up and restored if corrupted
+- Device paths are updated automatically if they change after reboot
+
+## Install Guide (Manual)
+
+<details>
+<summary>Click to expand manual installation steps</summary>
 
 1) SSH into your UGREEN NAS
 
 2) Install the packages mentioned above like
 
 ```bash
-sudo dnf install gcc make dkms dwarves kernel-headers sensors
+sudo dnf install gcc make dkms dwarves kernel-headers lm_sensors
 ```
 
 3) Building the dkms module and installing it
 
 ```bash
-cd /it87
+cd it87
 make -j4
 sudo make install
 ```
 
 > [!NOTE]
 > If you see this:
-> __Skipping BTF generation [module name] due to unavailabilty of vmlinux.__
+> __Skipping BTF generation [module name] due to unavailability of vmlinux.__
 >
 > You can simply run:
 >
@@ -55,7 +125,7 @@ sudo make install
 > make clean && make -j4 && sudo make install
 > ```
 
-1) Testing and configure the fans by configure lm_sensors
+4) Testing and configure the fans by configuring lm_sensors
 
 ```bash
 sudo sensors-detect
@@ -63,17 +133,7 @@ sudo sensors-detect
 
 You can answer all questions with Y.
 
-> [!NOTE]
-> If you have previously executed lm_sensor in and the dkms module has not yet been installed, you may see the following message:
->
-> ```txt
-> Found `ITE IT8613E Super IO Sensors'                        Success!
-> (address 0xa30, driver `to-be-written')
-> ```
->
-> Thats normal behavior and still will appear, even when the driver has been installed. But the interface to the ventilation is now available
-
-Do determine now which fan uses which channel, we can run pwmconfig which makes it easy for us, to detect:
+5) Configure fan channels with pwmconfig
 
 ```bash
 sudo pwmconfig
@@ -81,10 +141,70 @@ sudo pwmconfig
 
 This small application will take over for creating the fancontrol config file in /etc
 
-Finally, to be on the safe side, we can activate the fancontrol service at boot time
+6) Activate the fancontrol service at boot time
 
 ```bash
 systemctl enable --now fancontrol
+```
+
+</details>
+
+## Uninstall
+
+To remove the driver, services, and configuration files:
+
+```bash
+sudo ./scripts/uninstall.sh
+```
+
+This preserves your `/etc/fancontrol` configuration. Remove it manually if no longer needed.
+
+## Troubleshooting
+
+### Fan control stops working after reboot
+
+The automated installer prevents this by setting up proper systemd service ordering.
+If you installed manually, ensure the it87 module is loaded before fancontrol starts:
+
+```bash
+# Check if the module is loaded
+lsmod | grep it87
+
+# Load it manually
+sudo modprobe it87 ignore_resource_conflict=1
+
+# Make it persistent across reboots
+echo "it87" | sudo tee /etc/modules-load.d/it87.conf
+echo "options it87 ignore_resource_conflict=1" | sudo tee /etc/modprobe.d/it87.conf
+```
+
+### Configuration file is corrupted or missing
+
+The automated installer includes a config guard that backs up and restores the configuration.
+To manually restore from backup:
+
+```bash
+sudo /usr/local/sbin/fancontrol-config-guard.sh restore
+```
+
+To recreate the configuration from scratch:
+
+```bash
+sudo systemctl stop fancontrol
+sudo pwmconfig
+sudo systemctl start fancontrol
+```
+
+### DKMS module fails to build after kernel update
+
+```bash
+# Check DKMS status
+dkms status it87
+
+# Rebuild for current kernel
+cd it87
+make clean
+sudo make dkms
 ```
 
 ### Why did i that?

@@ -1,0 +1,14 @@
+[Unit]
+Description=Fancontrol configuration guard
+Before=fancontrol.service
+After=it87-driver.service local-fs.target
+Requires=it87-driver.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/fancontrol-config-guard.sh guard
+ExecStop=/usr/local/sbin/fancontrol-config-guard.sh backup
+
+[Install]
+WantedBy=multi-user.target
