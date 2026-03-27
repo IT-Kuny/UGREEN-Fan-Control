@@ -58,22 +58,11 @@ MINTEMP=hwmon2/pwm3=22
 EOF
 }
 
-REQUIRED_FIELDS=("INTERVAL" "DEVPATH" "DEVNAME" "FCTEMPS")
-
-# Inline validation function matching the guard script logic
-validate_config() {
-    local file="$1"
-    if [ ! -f "$file" ] || [ ! -s "$file" ]; then
-        return 1
-    fi
-    for field in "${REQUIRED_FIELDS[@]}"; do
-        if ! grep -qE "^${field}=" "$file"; then
-            return 1
-        fi
-    done
-    return 0
-}
-
+# Source the real fancontrol-config-guard script so tests exercise the
+# production implementation of validate_config/backup/restore logic.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=/dev/null
+. "$SCRIPT_DIR/scripts/fancontrol-config-guard.sh"
 # ---- Test: validate_config with valid config ----
 log_test "validate_config with valid config"
 config_file="$TEST_DIR/fancontrol"
