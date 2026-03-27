@@ -81,10 +81,12 @@ install_dkms() {
     # Handle BTF generation issue
     local kernel_version
     kernel_version=$(uname -r)
-    if [ ! -f "/usr/lib/modules/${kernel_version}/build/vmlinux" ] && \
+    local build_dir
+    build_dir=$(readlink -f "/lib/modules/${kernel_version}/build" 2>/dev/null || echo "/lib/modules/${kernel_version}/build")
+    if [ ! -f "${build_dir}/vmlinux" ] && \
        [ -f "/sys/kernel/btf/vmlinux" ]; then
         log "Copying vmlinux for BTF generation..."
-        cp /sys/kernel/btf/vmlinux "/usr/lib/modules/${kernel_version}/build/" 2>/dev/null || true
+        cp /sys/kernel/btf/vmlinux "${build_dir}/" 2>/dev/null || true
     fi
 
     # Clean up any previous DKMS installation of it87
