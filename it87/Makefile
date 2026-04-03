@@ -114,7 +114,7 @@ endif
 dkms:
 	@sed -i -e '/^PACKAGE_VERSION=/ s/=.*/=\"$(DRIVER_VERSION)\"/' dkms.conf
 	@echo "$(DRIVER_VERSION)" >VERSION
-	@mkdir $(DKMS_ROOT_PATH)
+	@mkdir -p $(DKMS_ROOT_PATH)
 	@cp `pwd`/dkms.conf $(DKMS_ROOT_PATH)
 	@cp `pwd`/VERSION $(DKMS_ROOT_PATH)
 	@cp `pwd`/Makefile $(DKMS_ROOT_PATH)

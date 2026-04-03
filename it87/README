@@ -4,7 +4,9 @@ Kernel driver it87
 Out-of-tree hwmon driver for ITE Super I/O chips.
 Based on upstream Linux kernel drivers/hwmon/it87.c with additional chip support.
 
-Maintained by IT-Kuny <https://github.com/IT-Kuny/UGREEN-Fan-Control>
+This directory contains a vendored snapshot of the driver used by this repository.
+Upstream/source fork: IT-Kuny <https://github.com/IT-Kuny/UGREEN-Fan-Control>
+For issues with this vendored copy, please file them in this repository.
 
 Supported chips:
   * IT8603E/IT8623E
