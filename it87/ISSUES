@@ -1,24 +1,26 @@
-Support for old kernel versions
-===============================
+Known Issues
+============
 
-The driver is known to not build for v2.6.32 kernels. Exact errors are unknown,
-though it is likely that kernel API functions are incompatible or not supported
-in v2.6.32. Patches to fix the problem will be accepted as long as they are
-implemented in compat.h.
+Fan issues after suspend on Gigabyte GA-AX370 Gaming 5
+-------------------------------------------------------
 
-Fan issues after suspend on Gigabyte GA-AX370 Gaming 5 + Ubuntu
-===============================================================
-
-Jaka Jaksic reports that after resuming from suspend to memory on Gigabyte
-GA-AX370 Gaming 5, fans start spinning very fast, regardless of whether IT87
-is loaded or not. Analysis shows that some chip registers have a wrong value
-after resume. The working assumption is that there is a BIOS problem.
-There is no known workaround.
+After resuming from suspend to memory on Gigabyte GA-AX370 Gaming 5, fans
+start spinning very fast regardless of whether it87 is loaded. Root cause
+appears to be a BIOS problem resetting chip registers on resume.
+No known workaround.
 
 On-board temperature display shows '00' on GA-AX370 Gaming 5
-============================================================
+-------------------------------------------------------------
 
-Öyvind Saether reports that the on-board two digit alarmblock display on
-Gigabyte AX370 Gaming 5 shows '00' instead of the current temperature after
-"modprobe it87". No further information is available at this time.
-There is no known workaround.
+The on-board two-digit display shows '00' instead of the current temperature
+after loading it87. No workaround known.
+
+hwmon-vid dependency
+--------------------
+
+The driver depends on the hwmon-vid kernel module. Load it before it87:
+
+  sudo modprobe hwmon-vid
+  sudo modprobe it87 ignore_resource_conflict=1
+
+DKMS handles this automatically via module dependency resolution.
