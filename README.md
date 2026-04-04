@@ -286,8 +286,6 @@ Core 3:        +49.0°C  (high = +105.0°C, crit = +105.0°C)
 # Bugs
 
 Please report them here.
-Anything related to dkms, please open a ticket at [a1wong](https://github.com/a1wong/it87) repository.
-I do not maintain this part of the project.
 
 ## Donations
 
