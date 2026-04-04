@@ -1,0 +1,26 @@
+Known Issues
+============
+
+Fan issues after suspend on Gigabyte GA-AX370 Gaming 5
+-------------------------------------------------------
+
+After resuming from suspend to memory on Gigabyte GA-AX370 Gaming 5, fans
+start spinning very fast regardless of whether it87 is loaded. Root cause
+appears to be a BIOS problem resetting chip registers on resume.
+No known workaround.
+
+On-board temperature display shows '00' on GA-AX370 Gaming 5
+-------------------------------------------------------------
+
+The on-board two-digit display shows '00' instead of the current temperature
+after loading it87. No workaround known.
+
+hwmon-vid dependency
+--------------------
+
+The driver depends on the hwmon-vid kernel module. Load it before it87:
+
+  sudo modprobe hwmon-vid
+  sudo modprobe it87 ignore_resource_conflict=1
+
+DKMS handles this automatically via module dependency resolution.

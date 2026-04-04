@@ -1,0 +1,195 @@
+Kernel driver it87
+==================
+
+Out-of-tree hwmon driver for ITE Super I/O chips.
+Based on upstream Linux kernel drivers/hwmon/it87.c with additional chip support.
+
+This directory contains a vendored snapshot of the driver used by this repository.
+Upstream/source fork: IT-Kuny <https://github.com/IT-Kuny/UGREEN-Fan-Control>
+For issues with this vendored copy, please file them in this repository.
+
+Supported chips:
+  * IT8603E/IT8623E
+    Prefix: 'it8603'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8613E  ← UGREEN DXP2800 (primary target)
+    Prefix: 'it8613'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8620E
+    Prefix: 'it8620'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+  * IT8622E
+    Prefix: 'it8622'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8628E
+    Prefix: 'it8628'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8705F
+    Prefix: 'it87'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: No longer publicly available
+  * IT8712F
+    Prefix: 'it8712'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: No longer publicly available
+  * IT8716F/IT8726F
+    Prefix: 'it8716'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: No longer publicly available
+  * IT8718F
+    Prefix: 'it8718'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: No longer publicly available
+  * IT8720F
+    Prefix: 'it8720'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8721F/IT8758E
+    Prefix: 'it8721'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8728F
+    Prefix: 'it8728'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8732F
+    Prefix: 'it8732'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8771E
+    Prefix: 'it8771'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8772E
+    Prefix: 'it8772'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8781F
+    Prefix: 'it8781'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8782F
+    Prefix: 'it8782'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8783E/F
+    Prefix: 'it8783'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8786E
+    Prefix: 'it8786'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8790E
+    Prefix: 'it8790'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT8792E
+    Prefix: 'it8792'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * IT87952E
+    Prefix: 'it87952'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: Not publicly available
+  * SiS950   [clone of IT8705F]
+    Prefix: 'it87'
+    Addresses scanned: from Super I/O config space (8 I/O ports)
+    Datasheet: No longer available
+
+Original authors:
+    Christophe Gauthron
+    Jean Delvare <jdelvare@suse.de>
+    Guenter Roeck <linux@roeck-us.net>
+
+
+Kernel Compatibility
+--------------------
+
+Requires kernel 6.1 or later. No compat.h shims needed.
+Tested on:
+  * Debian 13 (trixie), kernel 6.12.74
+
+
+Building & Installing
+---------------------
+
+Production build (default, debug symbols stripped):
+
+  make clean
+  make
+  sudo make install
+
+Development build (debug symbols included):
+
+  make BUILD=dev
+  sudo make install
+
+Using DKMS (recommended for persistence across kernel updates):
+
+  sudo make dkms
+
+To remove DKMS installation:
+
+  sudo make dkms_clean
+
+Loading the module:
+
+  sudo modprobe hwmon-vid
+  sudo modprobe it87 ignore_resource_conflict=1
+
+
+Module Parameters
+-----------------
+
+* update_vbat: int
+  0 if vbat should report power on value, 1 if vbat should be updated after
+  each read. Default is 0.
+
+* fix_pwm_polarity: int
+  Force PWM polarity to active high (DANGEROUS). Some chips are
+  misconfigured by BIOS. Only use if fan speed control is inverted.
+
+* force_id: ushort
+  Force chip ID to specified value. Should only be used for testing.
+
+* ignore_resource_conflict: bool
+  Ignore ACPI resource conflicts (similar to acpi_enforce_resources=lax,
+  but only affects this driver). Required on most systems. Default: 0.
+  Note: May cause race conditions in rare cases. Use with awareness.
+
+
+Hardware Interfaces
+-------------------
+
+All chips are LPC Super-I/O chips accessed through the LPC bus (ISA-like
+I/O ports).
+
+
+Fan Speed Control
+-----------------
+
+Manual PWM mode is supported on all chips. Automatic "Smart Guardian" mode
+is implemented for older chips (IT8705F up to rev F, IT8712F up to rev G).
+
+To configure fan control, use pwmconfig after loading the driver:
+
+  sudo sensors-detect
+  sudo pwmconfig
+  sudo systemctl enable --now fancontrol
+
+
+Reporting Unsupported Chips
+---------------------------
+
+Run sensors-detect and note the chip ID, then:
+
+  sudo isadump -k 0x87,0x01,0x55,0x55 0x2e 0x2f 7
+  sudo isadump 0x295 0x296
+
+Open an issue at https://github.com/IT-Kuny/UGREEN-Fan-Control/issues
+with the output and your board type.
