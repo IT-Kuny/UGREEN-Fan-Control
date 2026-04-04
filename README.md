@@ -1,9 +1,10 @@
-# UGREEN-Fan-Control
+# UGREEN DXP NAS Driver for the system fan
 
 After multiple searches I found a bunch of posts about loud fans for the DXP2800 but not how to control the fans.
 This applies to those who do not use UGOS PRO but __unRAID, Debian, Ubuntu, Fedora__ etc.
 
-Now it is possible to control the fans of your non-UGOS UGREEN NAS ! :)
+> [!NOTE]
+> In cooperation with AI, we've upstreamed the driver for the it87 chipset for the latest linux kernel (April 2026), dropped old kernel support for kernel version 2.7.x since there will be no UGREEN NAS with such a low linux kernel available. Im not good with C so any help, bug fixings and reviews are highly welcome :-)
 
 Here is a step by step guide on how to do this:
 
