@@ -1,0 +1,125 @@
+name: Bug report
+description: Report errors or unexpected behavior with the UGREEN DXP FAN NAS Driver.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an issue with the UGREEN DXP FAN NAS Driver!
+
+        Please fill in as much detail as possible so we can reproduce and fix the problem.
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      placeholder: Tell us what should happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      placeholder: Tell us what happens instead
+    validations:
+      required: true
+
+  - type: input
+    id: nas-model
+    attributes:
+      label: UGREEN NAS model
+      description: >
+        Your exact NAS model (e.g. `DXP2800`, `DXP6800Pro`).
+        Check the label on the bottom of the unit or the BIOS/UEFI board string.
+      placeholder: e.g. DXP2800
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: >
+        Distribution name, version and edition
+        (e.g. `Fedora 42 Server`, `Debian 12`, `unRAID 7.0`).
+    validations:
+      required: true
+
+  - type: input
+    id: kernel
+    attributes:
+      label: Kernel version
+      description: >
+        Output of `uname -r`. The kernel version is relevant because this is a DKMS kernel module.
+      placeholder: e.g. 6.14.5-300.fc42.x86_64
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Installation method
+      multiple: false
+      options:
+        - Automated installer (scripts/install.sh)
+        - Manual DKMS (make dkms)
+        - Manual build (make + make install)
+        - Other (please specify)
+    validations:
+      required: true
+
+  - type: input
+    id: driver-version
+    attributes:
+      label: Driver commit / version
+      description: >
+        Output of `git log --oneline -1` from inside the cloned repository,
+        or the commit SHA you are using.
+      placeholder: e.g. a1b2c3d Fix PWM range for DXP2800
+    validations:
+      required: true
+
+  - type: textarea
+    id: dkms-status
+    attributes:
+      label: DKMS status
+      description: >
+        Output of `dkms status it87` (if using DKMS).
+      render: shell
+
+  - type: textarea
+    id: sensors
+    attributes:
+      label: sensors output
+      description: >
+        Output of `sensors` after the driver is loaded.
+        Redact any information you consider sensitive.
+      render: shell
+
+  - type: textarea
+    id: dmesg
+    attributes:
+      label: Relevant dmesg output
+      description: >
+        Output of `sudo dmesg | grep -iE 'it87|fan|hwmon|sensor'` at the time of the issue.
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: >
+        Any other relevant information: fancontrol config snippets, pwmconfig output,
+        systemd service logs (`journalctl -u fancontrol`), etc.
