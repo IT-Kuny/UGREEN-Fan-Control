@@ -254,6 +254,17 @@ static const u8 IT87_REG_TEMP_OFFSET[] = { 0x56, 0x57, 0x59 };
 static const u8 IT87_REG_PWM[]         = { 0x15, 0x16, 0x17, 0x7f, 0xa7, 0xaf };
 static const u8 IT87_REG_PWM_DUTY[]    = { 0x63, 0x6b, 0x73, 0x7b, 0xa3, 0xab };
 
+/*
+ * IT8613E and IT8622E use different registers for PWM4/PWM5 control
+ * per ITE_Register_map.csv.
+ *
+ * FIXME: The corresponding PWM4/PWM5 duty cycle registers for these
+ * chips are not documented in the CSV. The duty registers below are
+ * inherited from the standard table and may need correction once
+ * official datasheet information is available.
+ */
+static const u8 IT87_REG_PWM_ALT[]    = { 0x15, 0x16, 0x17, 0x1e, 0x1f, 0xaf };
+
 static const u8 IT87_REG_VIN[]	= { 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26,
 				    0x27, 0x28, 0x2f, 0x2c, 0x2d, 0x2e };
 
@@ -328,6 +339,7 @@ struct it87_devices {
 #define FEAT_FOUR_PWM		BIT(21)	/* Supports four fan controls */
 #define FEAT_FOUR_TEMP		BIT(22)
 #define FEAT_FANCTL_ONOFF	BIT(23)	/* chip has FAN_CTL ON/OFF */
+#define FEAT_11MV_ADC		BIT(24)	/* 11 mV ADC resolution (IT8613E) */
 
 static const struct it87_devices it87_devices[] = {
 	[it87] = {
@@ -453,7 +465,7 @@ static const struct it87_devices it87_devices[] = {
 	[it8790] = {
 		.name = "it8790",
 		.model = "IT8790E",
-		.features = FEAT_NEWER_AUTOPWM | FEAT_12MV_ADC | FEAT_16BIT_FANS
+		.features = FEAT_NEWER_AUTOPWM | FEAT_10_9MV_ADC | FEAT_16BIT_FANS
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI | FEAT_IN7_INTERNAL
 		  | FEAT_PWM_FREQ2 | FEAT_FANCTL_ONOFF | FEAT_NOCONF,
 		.peci_mask = 0x07,
@@ -479,7 +491,7 @@ static const struct it87_devices it87_devices[] = {
 	[it8613] = {
 		.name = "it8613",
 		.model = "IT8613E",
-		.features = FEAT_NEWER_AUTOPWM | FEAT_12MV_ADC | FEAT_16BIT_FANS
+		.features = FEAT_NEWER_AUTOPWM | FEAT_11MV_ADC | FEAT_16BIT_FANS
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI | FEAT_FIVE_FANS
 		  | FEAT_FIVE_PWM | FEAT_IN7_INTERNAL | FEAT_PWM_FREQ2
 		  | FEAT_AVCC3,
@@ -527,6 +539,7 @@ static const struct it87_devices it87_devices[] = {
 
 #define has_16bit_fans(data)	((data)->features & FEAT_16BIT_FANS)
 #define has_12mv_adc(data)	((data)->features & FEAT_12MV_ADC)
+#define has_11mv_adc(data)	((data)->features & FEAT_11MV_ADC)
 #define has_10_9mv_adc(data)	((data)->features & FEAT_10_9MV_ADC)
 #define has_newer_autopwm(data)	((data)->features & FEAT_NEWER_AUTOPWM)
 #define has_old_autopwm(data)	((data)->features & FEAT_OLD_AUTOPWM)
@@ -558,6 +571,7 @@ static const struct it87_devices it87_devices[] = {
 #define has_vin3_5v(data)	((data)->features & FEAT_VIN3_5V)
 #define has_noconf(data)	((data)->features & FEAT_NOCONF)
 #define has_scaling(data)	((data)->features & (FEAT_12MV_ADC | \
+						     FEAT_11MV_ADC | \
 						     FEAT_10_9MV_ADC))
 #define has_fanctl_onoff(data)	((data)->features & FEAT_FANCTL_ONOFF)
 
@@ -594,6 +608,8 @@ struct it87_data {
 
 	u8 smbus_bitmap;	/* !=0 if SMBus needs to be disabled */
 	u8 ec_special_config;	/* EC special config register restore value */
+
+	const u8 *REG_PWM;	/* Per-chip PWM control register table */
 
 	unsigned short addr;
 	const char *name;
@@ -656,6 +672,8 @@ static int adc_lsb(const struct it87_data *data, int nr)
 
 	if (has_12mv_adc(data))
 		lsb = 120;
+	else if (has_11mv_adc(data))
+		lsb = 110;
 	else if (has_10_9mv_adc(data))
 		lsb = 109;
 	else
@@ -808,7 +826,7 @@ static void it87_write_value(struct it87_data *data, u8 reg, u8 value)
 
 static void it87_update_pwm_ctrl(struct it87_data *data, int nr)
 {
-	data->pwm_ctrl[nr] = it87_read_value(data, IT87_REG_PWM[nr]);
+	data->pwm_ctrl[nr] = it87_read_value(data, data->REG_PWM[nr]);
 	if (has_newer_autopwm(data)) {
 		data->pwm_temp_map[nr] = data->pwm_ctrl[nr] & 0x03;
 		data->pwm_duty[nr] = it87_read_value(data,
@@ -1570,7 +1588,7 @@ static ssize_t set_pwm_enable(struct device *dev, struct device_attribute *attr,
 				ctrl = data->pwm_duty[nr];
 			}
 			data->pwm_ctrl[nr] = ctrl;
-			it87_write_value(data, IT87_REG_PWM[nr], ctrl);
+			it87_write_value(data, data->REG_PWM[nr], ctrl);
 		}
 	} else {
 		u8 ctrl;
@@ -1584,7 +1602,7 @@ static ssize_t set_pwm_enable(struct device *dev, struct device_attribute *attr,
 			ctrl = (val == 1 ? data->pwm_duty[nr] : 0x80);
 		}
 		data->pwm_ctrl[nr] = ctrl;
-		it87_write_value(data, IT87_REG_PWM[nr], ctrl);
+		it87_write_value(data, data->REG_PWM[nr], ctrl);
 
 		if (has_fanctl_onoff(data) && nr < 3) {
 			/* set SmartGuardian mode */
@@ -1635,7 +1653,7 @@ static ssize_t set_pwm(struct device *dev, struct device_attribute *attr,
 		 */
 		if (!(data->pwm_ctrl[nr] & 0x80)) {
 			data->pwm_ctrl[nr] = data->pwm_duty[nr];
-			it87_write_value(data, IT87_REG_PWM[nr],
+			it87_write_value(data, data->REG_PWM[nr],
 					 data->pwm_ctrl[nr]);
 		}
 	}
@@ -1748,7 +1766,7 @@ static ssize_t set_pwm_temp_map(struct device *dev,
 	if (data->pwm_ctrl[nr] & 0x80) {
 		data->pwm_ctrl[nr] = (data->pwm_ctrl[nr] & 0xfc) |
 						data->pwm_temp_map[nr];
-		it87_write_value(data, IT87_REG_PWM[nr], data->pwm_ctrl[nr]);
+		it87_write_value(data, data->REG_PWM[nr], data->pwm_ctrl[nr]);
 	}
 	it87_unlock(data);
 	return count;
@@ -3411,7 +3429,7 @@ static int it87_check_pwm(struct device *dev)
 
 			for (i = 0; i < ARRAY_SIZE(pwm); i++)
 				pwm[i] = it87_read_value(data,
-							 IT87_REG_PWM[i]);
+							 data->REG_PWM[i]);
 
 			/*
 			 * If any fan is in automatic pwm mode, the polarity
@@ -3426,7 +3444,7 @@ static int it87_check_pwm(struct device *dev)
 						 tmp | 0x87);
 				for (i = 0; i < 3; i++)
 					it87_write_value(data,
-							 IT87_REG_PWM[i],
+							 data->REG_PWM[i],
 							 0x7f & ~pwm[i]);
 				return 1;
 			}
@@ -3475,6 +3493,12 @@ static int it87_probe(struct platform_device *pdev)
 	data->features = it87_devices[sio_data->type].features;
 	data->peci_mask = it87_devices[sio_data->type].peci_mask;
 	data->old_peci_mask = it87_devices[sio_data->type].old_peci_mask;
+
+	/* IT8613E and IT8622E use alternate PWM4/PWM5 register addresses */
+	if (data->type == it8613 || data->type == it8622)
+		data->REG_PWM = IT87_REG_PWM_ALT;
+	else
+		data->REG_PWM = IT87_REG_PWM;
 	/*
 	 * IT8705F Datasheet 0.4.1, 3h == Version G.
 	 * IT8712F Datasheet 0.9.1, section 8.3.5 indicates 8h == Version J.
