@@ -465,7 +465,7 @@ static const struct it87_devices it87_devices[] = {
 	[it8790] = {
 		.name = "it8790",
 		.model = "IT8790E",
-		.features = FEAT_NEWER_AUTOPWM | FEAT_12MV_ADC | FEAT_16BIT_FANS
+		.features = FEAT_NEWER_AUTOPWM | FEAT_10_9MV_ADC | FEAT_16BIT_FANS
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI | FEAT_IN7_INTERNAL
 		  | FEAT_PWM_FREQ2 | FEAT_FANCTL_ONOFF | FEAT_NOCONF,
 		.peci_mask = 0x07,
