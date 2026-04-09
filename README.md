@@ -6,6 +6,21 @@ This applies to those who do not use UGOS PRO but __unRAID, Debian, Ubuntu, Fedo
 > [!NOTE]
 > In cooperation with AI, we've upstreamed the driver for the it87 chipset for the latest linux kernel (April 2026), dropped old kernel support for kernel version 2.7.x since there will be no UGREEN NAS with such a low linux kernel available. Im not good with C so any help, bug fixings and reviews are highly welcome :-)
 
+---
+
+> [!IMPORTANT]  
+> As it seems, does UGREEN utilize the it87 Chipset for each NAS slightly different. In that manner, I need your help, to extend the driver for all UGREEN NAS's. If you see your NAS not listed here, feel free to open an Issue with your NAS Model.
+
+Whats currenttly being supported:
+
+- DXP2800
+
+Whats currently being partially supported: 
+
+- DXP6800Pro (See [Issue](https://github.com/IT-Kuny/UGREEN-DXP-FAN-NAS-Driver/issues/6) #6 for now)
+
+---
+
 Here is a step by step guide on how to do this:
 
 ## Package Requirements
