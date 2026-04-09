@@ -251,7 +251,8 @@ else
 fi
 
 # Check that all runtime PWM accesses use data->REG_PWM (not the global array)
-runtime_global=$(grep -n 'IT87_REG_PWM\[' "$DRIVER" | grep -v '^[0-9]*:static ' || true)
+# Use word boundary to avoid matching IT87_REG_PWM_ALT or IT87_REG_PWM_DUTY
+runtime_global=$(grep -nP '\bIT87_REG_PWM\[' "$DRIVER" | grep -v '^[0-9]*:static ' || true)
 if [ -z "$runtime_global" ]; then
     pass "No runtime references to global IT87_REG_PWM[] (all use data->REG_PWM)"
 else
